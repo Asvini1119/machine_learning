@@ -1,0 +1,572 @@
+Chapter 2 – Consolidated Code (with Comments)
+Introduction to Machine Learning with Python (Chapter 2: Supervised Learning)
+This document consolidates the key example code from Chapter 2, with inline comments that explain what each step does. It assumes you have installed: scikit-learn, numpy, pandas, matplotlib, and mglearn.
+Tip: If you get NameError: train_test_split is not defined, import it with: from sklearn.model_selection import train_test_split.
+0. Imports and Setup
+# Core scientific Python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# scikit-learn helpers
+from sklearn.model_selection import train_test_split
+
+# Chapter helper library used in the book
+import mglearn
+
+# Make plots show up in notebooks (Jupyter)
+# %matplotlib inline
+1. Synthetic Classification Dataset: forge
+# Generate the "forge" two-class dataset (2 features)
+X, y = mglearn.datasets.make_forge()
+
+# Visualize the points: color/marker = class label
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+plt.legend(["Class 0", "Class 1"], loc=4)
+plt.xlabel("First feature")
+plt.ylabel("Second feature")
+print("X.shape:", X.shape)
+plt.show()
+2. Real-World Classification Dataset: Breast Cancer
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+
+# Count samples per class (0=malignant, 1=benign in this dataset)
+print("Sample counts per class:\n",
+      {name: count for name, count in zip(cancer.target_names,
+                                         np.bincount(cancer.target))})
+3. k-Nearest Neighbors (k-NN) – Classification
+from sklearn.neighbors import KNeighborsClassifier
+
+# Split forge into train/test so we can measure generalization
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, random_state=0)
+
+# Train a k-NN classifier (k = number of neighbors to vote over)
+clf = KNeighborsClassifier(n_neighbors=3)
+clf.fit(X_train, y_train)
+
+# Predict on test data
+print("Test set predictions:", clf.predict(X_test))
+
+# Accuracy on test set
+print("Test set accuracy: {:.2f}".format(clf.score(X_test, y_test)))
+3.1 Visualizing k-NN Decision Boundaries (2D)
+fig, axes = plt.subplots(1, 3, figsize=(10, 3))
+
+for n_neighbors, ax in zip([1, 3, 9], axes):
+    # Fit the model for a given k
+    clf = KNeighborsClassifier(n_neighbors=n_neighbors).fit(X, y)
+
+    # Plot decision regions (separator) for the fitted classifier
+    mglearn.plots.plot_2d_separator(
+        clf, X, fill=True, eps=0.5, ax=ax, alpha=.4
+    )
+
+    # Plot training points
+    mglearn.discrete_scatter(X[:, 0], X[:, 1], y, ax=ax)
+
+    ax.set_title(f"{n_neighbors} neighbor(s)")
+    ax.set_xlabel("feature 0")
+    ax.set_ylabel("feature 1")
+
+axes[0].legend(loc=3)
+plt.show()
+3.2 Model Complexity vs n_neighbors (Breast Cancer)
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target,
+    stratify=cancer.target, random_state=66
+)
+
+training_accuracy = []
+test_accuracy = []
+neighbors_settings = range(1, 11)
+
+for n_neighbors in neighbors_settings:
+    clf = KNeighborsClassifier(n_neighbors=n_neighbors)
+    clf.fit(X_train, y_train)
+
+    # Score = accuracy for classifiers
+    training_accuracy.append(clf.score(X_train, y_train))
+    test_accuracy.append(clf.score(X_test, y_test))
+
+plt.plot(neighbors_settings, training_accuracy, label="training accuracy")
+plt.plot(neighbors_settings, test_accuracy, label="test accuracy")
+plt.ylabel("Accuracy")
+plt.xlabel("n_neighbors")
+plt.legend()
+plt.show()
+4. k-Nearest Neighbors (k-NN) – Regression
+from sklearn.neighbors import KNeighborsRegressor
+
+# Generate synthetic wave regression dataset
+X, y = mglearn.datasets.make_wave(n_samples=40)
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+# k-NN regressor predicts mean target of the k nearest neighbors
+reg = KNeighborsRegressor(n_neighbors=3)
+reg.fit(X_train, y_train)
+
+print("Test set predictions:\n", reg.predict(X_test))
+print("Test set R^2: {:.2f}".format(reg.score(X_test, y_test)))
+4.1 Visualizing k-NN Regression with Different k
+fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+
+# Create dense 1D grid to plot the learned function
+line = np.linspace(-3, 3, 1000).reshape(-1, 1)
+
+for n_neighbors, ax in zip([1, 3, 9], axes):
+    reg = KNeighborsRegressor(n_neighbors=n_neighbors)
+    reg.fit(X_train, y_train)
+
+    # Plot predictions as a curve
+    ax.plot(line, reg.predict(line))
+
+    # Plot training and test points
+    ax.plot(X_train, y_train, '^', markersize=8, label="train")
+    ax.plot(X_test, y_test, 'v', markersize=8, label="test")
+
+    ax.set_title(
+        f"{n_neighbors} neighbor(s)\n"
+        f"train score: {reg.score(X_train, y_train):.2f} "
+        f"test score: {reg.score(X_test, y_test):.2f}"
+    )
+    ax.set_xlabel("Feature")
+    ax.set_ylabel("Target")
+
+axes[0].legend(loc="best")
+plt.show()
+5. Linear Models – Regression
+5.1 Ordinary Least Squares (LinearRegression)
+from sklearn.linear_model import LinearRegression
+
+X, y = mglearn.datasets.make_wave(n_samples=60)
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+
+lr = LinearRegression().fit(X_train, y_train)
+
+print("lr.coef_:", lr.coef_)        # slope(s)
+print("lr.intercept_:", lr.intercept_)  # intercept
+print("Training set score: {:.2f}".format(lr.score(X_train, y_train)))
+print("Test set score: {:.2f}".format(lr.score(X_test, y_test)))
+5.2 OLS Overfitting Example: Extended Boston
+# Extended Boston dataset used in the book (mglearn helper)
+X, y = mglearn.datasets.load_extended_boston()
+X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+
+lr = LinearRegression().fit(X_train, y_train)
+print("Training set score: {:.2f}".format(lr.score(X_train, y_train)))
+print("Test set score: {:.2f}".format(lr.score(X_test, y_test)))
+6. Ridge Regression (L2 Regularization)
+from sklearn.linear_model import Ridge
+
+# Default alpha=1.0
+ridge = Ridge().fit(X_train, y_train)
+print("Training set score: {:.2f}".format(ridge.score(X_train, y_train)))
+print("Test set score: {:.2f}".format(ridge.score(X_test, y_test)))
+
+# Stronger regularization => larger alpha => simpler model
+ridge10 = Ridge(alpha=10).fit(X_train, y_train)
+print("alpha=10 training score: {:.2f}".format(ridge10.score(X_train, y_train)))
+print("alpha=10 test score: {:.2f}".format(ridge10.score(X_test, y_test)))
+
+# Weaker regularization => smaller alpha => closer to LinearRegression
+ridge01 = Ridge(alpha=0.1).fit(X_train, y_train)
+print("alpha=0.1 training score: {:.2f}".format(ridge01.score(X_train, y_train)))
+print("alpha=0.1 test score: {:.2f}".format(ridge01.score(X_test, y_test)))
+6.1 Ridge Coefficients vs OLS
+plt.plot(ridge.coef_, 's', label="Ridge alpha=1")
+plt.plot(ridge10.coef_, '^', label="Ridge alpha=10")
+plt.plot(ridge01.coef_, 'v', label="Ridge alpha=0.1")
+plt.plot(lr.coef_, 'o', label="LinearRegression")
+
+plt.xlabel("Coefficient index")
+plt.ylabel("Coefficient magnitude")
+plt.hlines(0, 0, len(lr.coef_))
+plt.ylim(-25, 25)
+plt.legend()
+plt.show()
+7. Lasso Regression (L1 Regularization)
+from sklearn.linear_model import Lasso
+
+# Default alpha=1.0 is often too strong on this dataset (underfitting)
+lasso = Lasso().fit(X_train, y_train)
+print("Training set score: {:.2f}".format(lasso.score(X_train, y_train)))
+print("Test set score: {:.2f}".format(lasso.score(X_test, y_test)))
+print("Number of features used:", np.sum(lasso.coef_ != 0))
+
+# Reduce alpha to fit a less restricted (more complex) model
+lasso001 = Lasso(alpha=0.01, max_iter=100000).fit(X_train, y_train)
+print("alpha=0.01 training score: {:.2f}".format(lasso001.score(X_train, y_train)))
+print("alpha=0.01 test score: {:.2f}".format(lasso001.score(X_test, y_test)))
+print("Number of features used:", np.sum(lasso001.coef_ != 0))
+
+# Too small alpha can remove regularization and overfit
+lasso00001 = Lasso(alpha=0.0001, max_iter=100000).fit(X_train, y_train)
+print("alpha=0.0001 training score: {:.2f}".format(lasso00001.score(X_train, y_train)))
+print("alpha=0.0001 test score: {:.2f}".format(lasso00001.score(X_test, y_test)))
+print("Number of features used:", np.sum(lasso00001.coef_ != 0))
+7.1 Lasso vs Ridge Coefficient Plot
+plt.plot(lasso.coef_, 's', label="Lasso alpha=1")
+plt.plot(lasso001.coef_, '^', label="Lasso alpha=0.01")
+plt.plot(lasso00001.coef_, 'v', label="Lasso alpha=0.0001")
+plt.plot(ridge01.coef_, 'o', label="Ridge alpha=0.1")
+
+plt.legend(ncol=2, loc=(0, 1.05))
+plt.ylim(-25, 25)
+plt.xlabel("Coefficient index")
+plt.ylabel("Coefficient magnitude")
+plt.show()
+8. Linear Models – Classification (LogisticRegression, LinearSVC)
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
+
+X, y = mglearn.datasets.make_forge()
+fig, axes = plt.subplots(1, 2, figsize=(10, 3))
+
+for model, ax in zip([LinearSVC(), LogisticRegression()], axes):
+    clf = model.fit(X, y)
+    mglearn.plots.plot_2d_separator(clf, X, fill=False, eps=0.5,
+                                    ax=ax, alpha=.7)
+    mglearn.discrete_scatter(X[:, 0], X[:, 1], y, ax=ax)
+    ax.set_title(clf.__class__.__name__)
+    ax.set_xlabel("Feature 0")
+    ax.set_ylabel("Feature 1")
+
+axes[0].legend()
+plt.show()
+8.1 LogisticRegression on Breast Cancer (C controls regularization)
+from sklearn.datasets import load_breast_cancer
+from sklearn.linear_model import LogisticRegression
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, stratify=cancer.target, random_state=42)
+
+# Default C=1.0 (L2 regularization)
+logreg = LogisticRegression(max_iter=10000).fit(X_train, y_train)
+print("C=1 training score: {:.3f}".format(logreg.score(X_train, y_train)))
+print("C=1 test score: {:.3f}".format(logreg.score(X_test, y_test)))
+
+# Larger C => less regularization => more complex model
+logreg100 = LogisticRegression(C=100, max_iter=10000).fit(X_train, y_train)
+print("C=100 training score: {:.3f}".format(logreg100.score(X_train, y_train)))
+print("C=100 test score: {:.3f}".format(logreg100.score(X_test, y_test)))
+
+# Smaller C => stronger regularization => simpler model
+logreg001 = LogisticRegression(C=0.01, max_iter=10000).fit(X_train, y_train)
+print("C=0.01 training score: {:.3f}".format(logreg001.score(X_train, y_train)))
+print("C=0.01 test score: {:.3f}".format(logreg001.score(X_test, y_test)))
+8.2 Coefficient Magnitudes for Different C
+plt.plot(logreg.coef_.T, 'o', label="C=1")
+plt.plot(logreg100.coef_.T, '^', label="C=100")
+plt.plot(logreg001.coef_.T, 'v', label="C=0.01")
+
+plt.xticks(range(cancer.data.shape[1]), cancer.feature_names, rotation=90)
+plt.hlines(0, 0, cancer.data.shape[1])
+plt.ylim(-5, 5)
+plt.xlabel("Feature")
+plt.ylabel("Coefficient magnitude")
+plt.legend()
+plt.show()
+8.3 LogisticRegression with L1 Regularization (Feature Selection)
+# NOTE: In modern scikit-learn you often need solver='liblinear' or 'saga' for L1.
+for C, marker in zip([0.001, 1, 100], ['o', '^', 'v']):
+    lr_l1 = LogisticRegression(C=C, penalty="l1", solver="liblinear", max_iter=10000).fit(X_train, y_train)
+    print(f"Training accuracy l1 logreg C={C}: {lr_l1.score(X_train, y_train):.2f}")
+    print(f"Test accuracy l1 logreg C={C}: {lr_l1.score(X_test, y_test):.2f}")
+    plt.plot(lr_l1.coef_.T, marker, label=f"C={C}")
+
+plt.xticks(range(cancer.data.shape[1]), cancer.feature_names, rotation=90)
+plt.hlines(0, 0, cancer.data.shape[1])
+plt.xlabel("Feature")
+plt.ylabel("Coefficient magnitude")
+plt.ylim(-5, 5)
+plt.legend(loc=3)
+plt.show()
+9. Multiclass with One-vs-Rest (LinearSVC)
+from sklearn.datasets import make_blobs
+from sklearn.svm import LinearSVC
+
+X, y = make_blobs(random_state=42)
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+plt.xlabel("Feature 0")
+plt.ylabel("Feature 1")
+plt.show()
+
+linear_svm = LinearSVC().fit(X, y)
+print("Coefficient shape:", linear_svm.coef_.shape)     # (n_classes, n_features)
+print("Intercept shape:", linear_svm.intercept_.shape)  # (n_classes,)
+9.1 Plot the 3 One-vs-Rest Lines
+mglearn.discrete_scatter(X[:, 0], X[:, 1], y)
+line = np.linspace(-15, 15)
+
+for coef, intercept, color in zip(linear_svm.coef_, linear_svm.intercept_,
+                                  mglearn.cm3.colors):
+    # Each class has its own separating line: coef[0]*x + coef[1]*y + intercept = 0
+    plt.plot(line, -(line * coef[0] + intercept) / coef[1], c=color)
+
+plt.ylim(-10, 15)
+plt.xlim(-10, 8)
+plt.xlabel("Feature 0")
+plt.ylabel("Feature 1")
+plt.show()
+10. Naive Bayes (BernoulliNB example)
+from sklearn.naive_bayes import BernoulliNB
+
+# Toy binary-feature dataset (each row is a sample, each column a binary feature)
+X = np.array([[0, 1, 0, 1],
+              [1, 0, 1, 1],
+              [0, 0, 0, 1],
+              [1, 0, 1, 0]])
+y = np.array([0, 1, 0, 1])
+
+# Count how many times each feature is 1 within each class (as shown in the book)
+counts = {}
+for label in np.unique(y):
+    counts[label] = X[y == label].sum(axis=0)
+print("Feature counts:\n", counts)
+
+# Fit BernoulliNB (alpha controls smoothing)
+nb = BernoulliNB(alpha=1.0)
+nb.fit(X, y)
+print("Predictions:", nb.predict(X))
+11. Decision Trees
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.datasets import load_breast_cancer
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, stratify=cancer.target, random_state=42
+)
+
+# Unpruned tree (likely overfits)
+tree = DecisionTreeClassifier(random_state=0)
+tree.fit(X_train, y_train)
+print("Accuracy on training set: {:.3f}".format(tree.score(X_train, y_train)))
+print("Accuracy on test set: {:.3f}".format(tree.score(X_test, y_test)))
+
+# Pre-pruned tree
+tree = DecisionTreeClassifier(max_depth=4, random_state=0)
+tree.fit(X_train, y_train)
+print("Pruned (max_depth=4) train: {:.3f}".format(tree.score(X_train, y_train)))
+print("Pruned (max_depth=4) test : {:.3f}".format(tree.score(X_test, y_test)))
+11.1 Tree Visualization Export (Graphviz)
+from sklearn.tree import export_graphviz
+import graphviz
+
+export_graphviz(
+    tree,
+    out_file="tree.dot",
+    class_names=["malignant", "benign"],
+    feature_names=cancer.feature_names,
+    impurity=False,
+    filled=True
+)
+
+with open("tree.dot") as f:
+    dot_graph = f.read()
+
+# In notebooks, this displays the tree diagram
+display(graphviz.Source(dot_graph))
+11.2 Feature Importances Plot
+def plot_feature_importances_cancer(model):
+    n_features = cancer.data.shape[1]
+    plt.barh(np.arange(n_features), model.feature_importances_, align='center')
+    plt.yticks(np.arange(n_features), cancer.feature_names)
+    plt.xlabel("Feature importance")
+    plt.ylabel("Feature")
+    plt.ylim(-1, n_features)
+
+plot_feature_importances_cancer(tree)
+plt.show()
+12. Random Forests
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_moons
+
+X, y = make_moons(n_samples=100, noise=0.25, random_state=3)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, stratify=y, random_state=42
+)
+
+forest = RandomForestClassifier(n_estimators=5, random_state=2)
+forest.fit(X_train, y_train)
+
+# Visualize each tree's partition + the forest's final boundary (book helper)
+fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+for i, (ax, tree) in enumerate(zip(axes.ravel(), forest.estimators_)):
+    ax.set_title(f"Tree {i}")
+    mglearn.plots.plot_tree_partition(X_train, y_train, tree, ax=ax)
+
+mglearn.plots.plot_2d_separator(forest, X_train, fill=True, ax=axes[-1, -1],
+                                alpha=.4)
+axes[-1, -1].set_title("Random Forest")
+mglearn.discrete_scatter(X_train[:, 0], X_train[:, 1], y_train)
+plt.show()
+12.1 RandomForest on Breast Cancer
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0
+)
+
+forest = RandomForestClassifier(n_estimators=100, random_state=0)
+forest.fit(X_train, y_train)
+
+print("Accuracy on training set: {:.3f}".format(forest.score(X_train, y_train)))
+print("Accuracy on test set: {:.3f}".format(forest.score(X_test, y_test)))
+
+# Feature importances (aggregate over trees)
+plot_feature_importances_cancer(forest)
+plt.show()
+13. Gradient Boosted Decision Trees
+from sklearn.ensemble import GradientBoostingClassifier
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0
+)
+
+gbrt = GradientBoostingClassifier(random_state=0)
+gbrt.fit(X_train, y_train)
+print("Default train: {:.3f}".format(gbrt.score(X_train, y_train)))
+print("Default test : {:.3f}".format(gbrt.score(X_test, y_test)))
+
+# Reduce complexity via stronger pruning
+gbrt_depth1 = GradientBoostingClassifier(random_state=0, max_depth=1)
+gbrt_depth1.fit(X_train, y_train)
+print("max_depth=1 train: {:.3f}".format(gbrt_depth1.score(X_train, y_train)))
+print("max_depth=1 test : {:.3f}".format(gbrt_depth1.score(X_test, y_test)))
+
+# Reduce complexity via smaller learning rate
+gbrt_lr001 = GradientBoostingClassifier(random_state=0, learning_rate=0.01)
+gbrt_lr001.fit(X_train, y_train)
+print("lr=0.01 train: {:.3f}".format(gbrt_lr001.score(X_train, y_train)))
+print("lr=0.01 test : {:.3f}".format(gbrt_lr001.score(X_test, y_test)))
+
+plot_feature_importances_cancer(gbrt_depth1)
+plt.show()
+14. Kernelized SVM (RBF Kernel) + Feature Scaling
+from sklearn.svm import SVC
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0
+)
+
+# Default SVC often overfits badly without scaling
+svc = SVC()
+svc.fit(X_train, y_train)
+print("Unscaled train acc: {:.2f}".format(svc.score(X_train, y_train)))
+print("Unscaled test acc : {:.2f}".format(svc.score(X_test, y_test)))
+
+# Manual Min-Max scaling to [0, 1] using TRAIN statistics
+min_on_training = X_train.min(axis=0)
+range_on_training = (X_train - min_on_training).max(axis=0)
+
+X_train_scaled = (X_train - min_on_training) / range_on_training
+X_test_scaled = (X_test - min_on_training) / range_on_training
+
+svc = SVC()
+svc.fit(X_train_scaled, y_train)
+print("Scaled train acc: {:.3f}".format(svc.score(X_train_scaled, y_train)))
+print("Scaled test acc : {:.3f}".format(svc.score(X_test_scaled, y_test)))
+
+# Tune C (and potentially gamma) after scaling
+svc = SVC(C=1000)
+svc.fit(X_train_scaled, y_train)
+print("Scaled (C=1000) train: {:.3f}".format(svc.score(X_train_scaled, y_train)))
+print("Scaled (C=1000) test : {:.3f}".format(svc.score(X_test_scaled, y_test)))
+15. Neural Networks (MLPClassifier) + Scaling
+from sklearn.neural_network import MLPClassifier
+
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, random_state=0
+)
+
+# Default MLP without scaling can perform poorly
+mlp = MLPClassifier(random_state=42, max_iter=1000)
+mlp.fit(X_train, y_train)
+print("Unscaled train acc: {:.2f}".format(mlp.score(X_train, y_train)))
+print("Unscaled test acc : {:.2f}".format(mlp.score(X_test, y_test)))
+
+# Standardize to mean=0, std=1 using TRAIN stats
+mean_on_train = X_train.mean(axis=0)
+std_on_train = X_train.std(axis=0)
+
+X_train_scaled = (X_train - mean_on_train) / std_on_train
+X_test_scaled = (X_test - mean_on_train) / std_on_train
+
+mlp = MLPClassifier(random_state=0, max_iter=1000)
+mlp.fit(X_train_scaled, y_train)
+print("Scaled train acc: {:.3f}".format(mlp.score(X_train_scaled, y_train)))
+print("Scaled test acc : {:.3f}".format(mlp.score(X_test_scaled, y_test)))
+
+# Increase alpha (L2 penalty) to reduce overfitting
+mlp_reg = MLPClassifier(random_state=0, max_iter=1000, alpha=1)
+mlp_reg.fit(X_train_scaled, y_train)
+print("Scaled+reg train: {:.3f}".format(mlp_reg.score(X_train_scaled, y_train)))
+print("Scaled+reg test : {:.3f}".format(mlp_reg.score(X_test_scaled, y_test)))
+16. Uncertainty Estimates: decision_function and predict_proba
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.datasets import make_circles
+
+X, y = make_circles(noise=0.25, factor=0.5, random_state=1)
+y_named = np.array(["blue", "red"])[y]
+
+X_train, X_test, y_train_named, y_test_named, y_train, y_test = train_test_split(
+    X, y_named, y, random_state=0
+)
+
+gbrt = GradientBoostingClassifier(random_state=0)
+gbrt.fit(X_train, y_train_named)
+
+# decision_function: signed confidence score (binary -> shape (n_samples,))
+scores = gbrt.decision_function(X_test)
+print("Decision function shape:", scores.shape)
+print("First 6 decision scores:", scores[:6])
+
+# Convert scores to predicted labels using sign and classes_
+greater_zero = (scores > 0).astype(int)
+pred_from_scores = gbrt.classes_[greater_zero]
+print("Pred from decision scores equals predict():",
+      np.all(pred_from_scores == gbrt.predict(X_test)))
+
+# predict_proba: calibrated-ish probabilities per class (shape (n_samples, 2))
+proba = gbrt.predict_proba(X_test)
+print("predict_proba shape:", proba.shape)
+print("First 6 probabilities:\n", proba[:6])
+16.1 Multiclass Uncertainty (Iris)
+from sklearn.datasets import load_iris
+from sklearn.ensemble import GradientBoostingClassifier
+
+iris = load_iris()
+X_train, X_test, y_train, y_test = train_test_split(
+    iris.data, iris.target, random_state=42
+)
+
+gbrt = GradientBoostingClassifier(learning_rate=0.01, random_state=0)
+gbrt.fit(X_train, y_train)
+
+dec = gbrt.decision_function(X_test)
+proba = gbrt.predict_proba(X_test)
+
+print("decision_function shape:", dec.shape)   # (n_samples, n_classes)
+print("predict_proba shape:", proba.shape)     # (n_samples, n_classes)
+
+# Recover predictions by argmax across class axis
+pred_from_dec = np.argmax(dec, axis=1)
+pred_from_proba = np.argmax(proba, axis=1)
+
+print("Matches predict() via decision_function:",
+      np.all(pred_from_dec == gbrt.predict(X_test)))
+print("Matches predict() via predict_proba:",
+      np.all(pred_from_proba == gbrt.predict(X_test)))
